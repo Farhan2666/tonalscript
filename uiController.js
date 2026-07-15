@@ -77,13 +77,7 @@ export class UIController {
       }
     });
 
-    this.elements.settingsBtn.addEventListener('click', () => this.showSettings());
-    this.elements.cancelSettings.addEventListener('click', () => this.hideSettings());
-    this.elements.saveSettings.addEventListener('click', () => this.saveSettings());
-    this.elements.toggleKeyVisibility.addEventListener('click', () => this.toggleKeyVisibility());
-    this.elements.modelSelect.addEventListener('change', (e) => {
-      this.ai.setModel(e.target.value);
-    });
+    // Settings modal is handled by app.js for reliability
 
     document.addEventListener('click', () => {
       if (Tone.context.state !== 'running') {
@@ -182,7 +176,12 @@ export class UIController {
 
   async handleAIGenerate() {
     const prompt = this.elements.aiPrompt.value.trim();
-    if (!prompt || !this.ai.hasApiKey()) return;
+    const apiKey = localStorage.getItem('openrouter-api-key') || '';
+    
+    if (!prompt || !apiKey) {
+      this.elements.aiError.textContent = 'Please set your API key first (click ⚙️ API Key)';
+      return;
+    }
 
     this.elements.aiGenerateBtn.disabled = true;
     this.elements.aiGenerateBtn.textContent = 'Generating...';
@@ -190,6 +189,7 @@ export class UIController {
 
     try {
       const genre = this.elements.aiGenre.value;
+      this.ai.saveApiKey(apiKey);
       const notation = await this.ai.generateNotation(prompt, genre);
       this.elements.notationInput.value = notation;
       this.handleInputChange();

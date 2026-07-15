@@ -55,19 +55,23 @@
 
       <div class="control-bar">
         <div class="preset-section">
-          <label for="presetSelect">Sound:</label>
+          <label for="presetSelect">Instrument:</label>
           <select id="presetSelect">
+            <optgroup label="Modern">
+              <option value="piano">Piano</option>
+              <option value="guitar">Guitar</option>
+              <option value="bass">Bass</option>
+              <option value="synth">Synth</option>
+            </optgroup>
             <optgroup label="Traditional">
               <option value="gamelan">Gamelan</option>
               <option value="koto">Koto</option>
               <option value="shamisen">Shamisen</option>
             </optgroup>
-            <optgroup label="Modern">
-              <option value="ambient">Ambient</option>
-              <option value="cinematic">Cinematic</option>
-              <option value="lofi">Lo-Fi</option>
-              <option value="electronic">Electronic</option>
-              <option value="traditional">Traditional</option>
+            <optgroup label="Ambient">
+              <option value="pad">Ambient Pad</option>
+              <option value="strings">Strings</option>
+              <option value="bells">Bells</option>
             </optgroup>
           </select>
         </div>

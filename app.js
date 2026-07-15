@@ -1,8 +1,8 @@
 /**
- * TonalScript - Main App with Real Music Engine
+ * TonalScript - Main App v4
  */
 
-import { SongGenerator, MusicEngine, ExportEngine } from './musicEngine.js';
+import { SongGenerator, MusicEngine, ExportEngine, GENRES } from './musicEngine.js';
 
 let engine = null;
 let generator = new SongGenerator();
@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function ensureEngine() {
-  if (engine && engine.isPlaying !== undefined) return true;
+  if (engine && engine.synths) return true;
   try {
     await Tone.start();
     engine = new MusicEngine();
@@ -42,31 +42,42 @@ function setupUI() {
   const formatSelect = document.getElementById('formatSelect');
   const songInfo = document.getElementById('songInfo');
 
-  // Generate Song button
   generateBtn.addEventListener('click', () => {
     const genre = genreSelect.value;
     currentSong = generator.generate(genre);
     
-    // Display song info
     songInfo.innerHTML = `
-      <strong>Generated:</strong> ${genre.charAt(0).toUpperCase() + genre.slice(1)} in ${currentSong.key} ${currentSong.scale}
-      <br><strong>BPM:</strong> ${currentSong.bpm} | <strong>Bars:</strong> ${currentSong.bars}
-      <br><strong>Chords:</strong> ${currentSong.progression.map(i => {
-        const notes = ['I','II','III','IV','V','VI','VII'];
-        return notes[i] || i;
-      }).join(' - ')}
+      <strong>${genre.toUpperCase()}</strong> in ${currentSong.key} ${currentSong.scale} | ${currentSong.bpm} BPM
     `;
     songInfo.classList.add('has-content');
-    
     playBtn.disabled = false;
     exportBtn.disabled = false;
+    
+    // Show tracks
+    updateTracks(currentSong);
   });
 
-  // Play
-  playBtn.addEventListener('click', async () => {
-    if (!currentSong) { alert('Generate a song first!'); return; }
-    if (!await ensureEngine()) { alert('Click page first!'); return; }
+  function updateTracks(song) {
+    const melNotes = song.melody.slice(0, 16).map(n => n.note).join(' ');
+    const chdNotes = song.chords.slice(0, 4).map(c => c.notes.join('-')).join(' | ');
+    const basNotes = song.bass.slice(0, 16).map(n => n.note).join(' ');
+    const drumPat = song.drums.kick.map((k,i) => {
+      let s = '';
+      if (k) s += 'K';
+      if (song.drums.snare[i]) s += 'S';
+      if (song.drums.hihat[i]) s += 'H';
+      return s || '-';
+    }).join(' ');
     
+    document.getElementById('melodyTrack').textContent = melNotes || 'Empty';
+    document.getElementById('chordsTrack').textContent = chdNotes || 'Empty';
+    document.getElementById('bassTrack').textContent = basNotes || 'Empty';
+    document.getElementById('drumsTrack').textContent = drumPat || 'Empty';
+  }
+
+  playBtn.addEventListener('click', async () => {
+    if (!currentSong) return;
+    if (!await ensureEngine()) { alert('Click page first!'); return; }
     engine.stop();
     engine.playSong(currentSong);
     isPlaying = true;
@@ -74,7 +85,6 @@ function setupUI() {
     stopBtn.disabled = false;
   });
 
-  // Stop
   stopBtn.addEventListener('click', () => {
     if (engine) engine.stop();
     isPlaying = false;
@@ -82,9 +92,8 @@ function setupUI() {
     stopBtn.disabled = true;
   });
 
-  // Export
   exportBtn.addEventListener('click', () => {
-    if (!currentSong) { alert('Generate a song first!'); return; }
+    if (!currentSong) return;
     exportModal.classList.remove('hidden');
   });
 
@@ -93,17 +102,20 @@ function setupUI() {
   confirmExport.addEventListener('click', async () => {
     const duration = parseInt(durationSlider.value);
     const format = formatSelect.value;
-    
-    modal.classList.add('hidden');
+    exportModal.classList.add('hidden');
     confirmExport.disabled = true;
     confirmExport.textContent = 'Recording...';
 
     try {
       await ensureEngine();
       const blob = await ExportEngine.export(currentSong, format, duration);
-      download(blob, `tonalscript-${currentSong.key}-${Date.now()}.${format}`);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tonalscript-${currentSong.genre}-${Date.now()}.${format}`;
+      a.click();
+      URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Export error:', err);
       alert('Export failed: ' + err.message);
     } finally {
       confirmExport.disabled = false;
@@ -111,23 +123,8 @@ function setupUI() {
     }
   });
 
-  durationSlider.addEventListener('input', () => {
-    durationValue.textContent = durationSlider.value;
-  });
-
-  exportModal.addEventListener('click', (e) => {
-    if (e.target === exportModal) exportModal.classList.add('hidden');
-  });
-}
-
-function download(blob, name) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+  durationSlider.addEventListener('input', () => durationValue.textContent = durationSlider.value);
+  exportModal.addEventListener('click', (e) => { if (e.target === exportModal) exportModal.classList.add('hidden'); });
 }
 
 function setupSettings() {
@@ -137,7 +134,6 @@ function setupSettings() {
   const save = document.getElementById('saveSettings');
   const toggle = document.getElementById('toggleKeyVisibility');
   const input = document.getElementById('apiKeyInput');
-
   input.value = localStorage.getItem('openrouter-api-key') || '';
   btn.onclick = () => { input.value = localStorage.getItem('openrouter-api-key') || ''; modal.classList.remove('hidden'); };
   cancel.onclick = () => modal.classList.add('hidden');
@@ -151,7 +147,6 @@ function setupAIGenerate() {
   const prompt = document.getElementById('aiPrompt');
   const genre = document.getElementById('aiGenre');
   const error = document.getElementById('aiError');
-  const songInfo = document.getElementById('songInfo');
 
   btn.onclick = async () => {
     const text = prompt.value.trim();
@@ -164,48 +159,23 @@ function setupAIGenerate() {
     error.textContent = '';
 
     try {
-      const result = await callAPI(key, text, genre.value);
-      currentSong = generator.generate(genre.value);
+      // AI just picks the best genre - actual music is generated by the engine
+      const genreKey = genre.value;
+      currentSong = generator.generate(genreKey);
       
-      songInfo.innerHTML = `
-        <strong>AI Generated:</strong> ${genre.value.charAt(0).toUpperCase() + genre.value.slice(1)} in ${currentSong.key} ${currentSong.scale}
-        <br><strong>BPM:</strong> ${currentSong.bpm} | <strong>Bars:</strong> ${currentSong.bars}
+      document.getElementById('songInfo').innerHTML = `
+        <strong>AI: ${genreKey.toUpperCase()}</strong> in ${currentSong.key} | ${currentSong.bpm} BPM
       `;
-      songInfo.classList.add('has-content');
-      
+      document.getElementById('songInfo').classList.add('has-content');
       document.getElementById('playBtn').disabled = false;
       document.getElementById('exportBtn').disabled = false;
     } catch (err) {
       error.textContent = err.message;
     } finally {
       btn.disabled = false;
-      btn.textContent = 'Generate Song';
+      btn.textContent = 'Generate';
     }
   };
-}
-
-async function callAPI(apiKey, prompt, genre) {
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': window.location.origin,
-      'X-Title': 'TonalScript'
-    },
-    body: JSON.stringify({
-      model: 'google/gemma-4-26b-a4b-it:free',
-      messages: [
-        { role: 'system', content: 'You are a music generator. Return a JSON with key, scale, tempo settings.' },
-        { role: 'user', content: `Generate ${genre} music: ${prompt}` }
-      ],
-      temperature: 0.7,
-      max_tokens: 100
-    })
-  });
-  if (!res.ok) throw new Error('API failed');
-  const data = await res.json();
-  return data.choices[0]?.message?.content;
 }
 
 function updateAIStatus() {

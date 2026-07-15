@@ -1,24 +1,30 @@
 /**
- * TonalScript - Main Application Entry Point
+ * TonalScript - Main Application Entry Point (Enhanced)
  */
 
 let audioEngine = null;
+let reverbNode = null;
+let delayNode = null;
 let isPlaying = false;
 let scheduledEvents = [];
 
-// Note mapping for Tone.js
+// Extended note mapping with multiple octaves
 const NOTE_MAP = {
-  'DO': 'C4', 'DA': 'C4', 'RE': 'D4', 'RA': 'D4',
-  'MI': 'E4', 'MA': 'E4', 'FA': 'F4', 'PA': 'F4',
-  'SOL': 'G4', 'GA': 'G4', 'LA': 'A4', 'NA': 'A4',
-  'SI': 'B4', 'SA': 'B4', 'NI': 'B4', 'DHA': 'A#4',
-  'DO2': 'C3', 'DO3': 'C4', 'DO4': 'C5', 'DO5': 'C6',
-  'RE2': 'D3', 'RE3': 'D4', 'RE4': 'D5', 'RE5': 'D6',
-  'MI2': 'E3', 'MI3': 'E4', 'MI4': 'E5', 'MI5': 'E6',
-  'FA2': 'F3', 'FA3': 'F4', 'FA4': 'F5', 'FA5': 'F6',
-  'SOL2': 'G3', 'SOL3': 'G4', 'SOL4': 'G5', 'SOL5': 'G6',
-  'LA2': 'A3', 'LA3': 'A4', 'LA4': 'A5', 'LA5': 'A6',
-  'SI2': 'B3', 'SI3': 'B4', 'SI4': 'B5', 'SI5': 'B6',
+  // Octave 3 (Low)
+  'DO2': 'C3', 'RE2': 'D3', 'MI2': 'E3', 'FA2': 'F3', 'SOL2': 'G3', 'LA2': 'A3', 'SI2': 'B3',
+  'DA2': 'C3', 'RA2': 'D3', 'MA2': 'E3', 'PA2': 'F3', 'GA2': 'G3', 'NA2': 'A3', 'SA2': 'B3', 'NI2': 'B3',
+  // Octave 4 (Mid)
+  'DO': 'C4', 'RE': 'D4', 'MI': 'E4', 'FA': 'F4', 'SOL': 'G4', 'LA': 'A4', 'SI': 'B4',
+  'DA': 'C4', 'RA': 'D4', 'MA': 'E4', 'PA': 'F4', 'GA': 'G4', 'NA': 'A4', 'SA': 'B4', 'NI': 'B4',
+  'DO3': 'C4', 'RE3': 'D4', 'MI3': 'E4', 'FA3': 'F4', 'SOL3': 'G4', 'LA3': 'A4', 'SI3': 'B4',
+  // Octave 5 (High)
+  'DO4': 'C5', 'RE4': 'D5', 'MI4': 'E5', 'FA4': 'F5', 'SOL4': 'G5', 'LA4': 'A5', 'SI4': 'B5',
+  'DA4': 'C5', 'RA4': 'D5', 'MA4': 'E5', 'PA4': 'F5', 'GA4': 'G5', 'NA4': 'A5', 'SA4': 'B5', 'NI4': 'B5',
+  // Octave 6 (Very High)
+  'DO5': 'C6', 'RE5': 'D6', 'MI5': 'E6', 'FA5': 'F6', 'SOL5': 'G6', 'LA5': 'A6', 'SI5': 'B6',
+  // Sharps
+  'DOD': 'C#4', 'RED': 'D#4', 'MID': 'E#4', 'FAD': 'F#4', 'SOLD': 'G#4', 'LAD': 'A#4', 'SID': 'B#4',
+  'DAD': 'C#4', 'RAD': 'D#4', 'MAD': 'E#4', 'PAD': 'F#4', 'GAD': 'G#4', 'NAD': 'A#4', 'SAD': 'B#4',
 };
 
 function mapNote(note) {
@@ -47,6 +53,17 @@ function parseNotation(text) {
   return notes;
 }
 
+// Get random velocity for humanization
+function randomVelocity() {
+  return 0.7 + Math.random() * 0.3; // 0.7 to 1.0
+}
+
+// Get octave from note string
+function getOctave(noteStr) {
+  const match = noteStr.match(/\d/);
+  return match ? parseInt(match[0]) : 4;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initSettingsModal();
   initAIGenerate();
@@ -63,38 +80,50 @@ function initPlayback() {
   const bpmValue = document.getElementById('bpmValue');
   const presetSelect = document.getElementById('presetSelect');
 
-  // Enable/disable play based on input
   notationInput.addEventListener('input', () => {
-    const hasText = notationInput.value.trim().length > 0;
-    playBtn.disabled = !hasText || isPlaying;
+    playBtn.disabled = !notationInput.value.trim() || isPlaying;
     inputError.textContent = '';
   });
 
-  // BPM slider
   bpmSlider.addEventListener('input', () => {
     bpmValue.textContent = bpmSlider.value;
-    if (audioEngine && isPlaying) {
-      Tone.Transport.bpm.value = parseInt(bpmSlider.value);
-    }
+    if (isPlaying) Tone.Transport.bpm.value = parseInt(bpmSlider.value);
   });
 
-  // Play button
   playBtn.addEventListener('click', async () => {
     const text = notationInput.value.trim();
     if (!text) return;
 
-    // Initialize audio on first click
     if (!audioEngine) {
       try {
         await Tone.start();
-        audioEngine = new Tone.Synth({
-          oscillator: { type: "sine" },
-          envelope: { attack: 0.1, decay: 0.2, sustain: 0.3, release: 0.5 }
+        
+        // Create synth
+        audioEngine = new Tone.PolySynth(Tone.Synth, {
+          oscillator: { type: "triangle" },
+          envelope: { attack: 0.1, decay: 0.3, sustain: 0.4, release: 0.8 },
+          volume: -6
         }).toDestination();
+
+        // Add reverb
+        reverbNode = new Tone.Reverb({
+          decay: 3,
+          wet: 0.4
+        }).toDestination();
+        audioEngine.connect(reverbNode);
+
+        // Add delay
+        delayNode = new Tone.FeedbackDelay({
+          delayTime: "8n",
+          feedback: 0.3,
+          wet: 0.25
+        }).toDestination();
+        audioEngine.connect(delayNode);
+
         console.log('Audio engine initialized');
       } catch (err) {
         console.error('Failed to init audio:', err);
-        inputError.textContent = 'Failed to initialize audio. Click anywhere first.';
+        inputError.textContent = 'Failed to initialize audio';
         return;
       }
     }
@@ -108,10 +137,17 @@ function initPlayback() {
     stopAll();
     Tone.Transport.bpm.value = parseInt(bpmSlider.value);
 
-    notes.forEach(({ note, duration }, i) => {
-      const eventId = Tone.Transport.scheduleOnce((time) => {
-        audioEngine.triggerAttackRelease(note, duration, time);
-      }, `+${i * 0.5}`);
+    // Create richer pattern with overlapping notes and arpeggios
+    const enrichedNotes = enrichPattern(notes);
+    
+    enrichedNotes.forEach(({ note, duration, time, velocity }, i) => {
+      const eventId = Tone.Transport.scheduleOnce((t) => {
+        try {
+          audioEngine.triggerAttackRelease(note, duration, t, velocity);
+        } catch (err) {
+          console.warn('Note error:', note, err);
+        }
+      }, time);
       scheduledEvents.push(eventId);
     });
 
@@ -123,17 +159,14 @@ function initPlayback() {
     notationInput.readOnly = true;
   });
 
-  // Pause button
   pauseBtn.addEventListener('click', () => {
     if (isPlaying) {
       Tone.Transport.pause();
       isPlaying = false;
       playBtn.disabled = false;
-      pauseBtn.disabled = true;
     }
   });
 
-  // Stop button
   stopBtn.addEventListener('click', () => {
     stopAll();
     playBtn.disabled = false;
@@ -142,24 +175,55 @@ function initPlayback() {
     notationInput.readOnly = false;
   });
 
-  // Keyboard shortcut
   document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.key === 'Enter') {
       e.preventDefault();
-      if (isPlaying) {
-        stopBtn.click();
-      } else {
-        playBtn.click();
-      }
+      isPlaying ? stopBtn.click() : playBtn.click();
     }
   });
 
-  // Enable play if there's saved notation
   setTimeout(() => {
-    if (notationInput.value.trim()) {
-      playBtn.disabled = false;
-    }
+    if (notationInput.value.trim()) playBtn.disabled = false;
   }, 100);
+}
+
+// Enrich the pattern with arpeggios, chords, and variation
+function enrichPattern(notes) {
+  const enriched = [];
+  const beatDuration = 0.5; // seconds per beat
+  
+  notes.forEach(({ note, duration }, i) => {
+    const time = `+${i * beatDuration}`;
+    const velocity = randomVelocity();
+    
+    // Main note
+    enriched.push({ note, duration, time, velocity });
+    
+    // Add arpeggio (one octave up, slightly delayed)
+    const octave = getOctave(note);
+    if (octave < 6) {
+      const highNote = note.replace(/\d/, String(octave + 1));
+      enriched.push({
+        note: highNote,
+        duration: duration,
+        time: `+${i * beatDuration + 0.05}`,
+        velocity: velocity * 0.7
+      });
+    }
+    
+    // Add octave below for depth (every other note)
+    if (i % 2 === 0 && octave > 3) {
+      const lowNote = note.replace(/\d/, String(octave - 1));
+      enriched.push({
+        note: lowNote,
+        duration: duration,
+        time: `+${i * beatDuration}`,
+        velocity: velocity * 0.5
+      });
+    }
+  });
+  
+  return enriched;
 }
 
 function stopAll() {
@@ -178,21 +242,17 @@ function initSettingsModal() {
   const toggleKeyVisibility = document.getElementById('toggleKeyVisibility');
   const apiKeyInput = document.getElementById('apiKeyInput');
 
-  const savedKey = localStorage.getItem('openrouter-api-key') || '';
-  apiKeyInput.value = savedKey;
+  apiKeyInput.value = localStorage.getItem('openrouter-api-key') || '';
 
   settingsBtn.addEventListener('click', () => {
     apiKeyInput.value = localStorage.getItem('openrouter-api-key') || '';
     settingsModal.classList.remove('hidden');
   });
 
-  cancelSettings.addEventListener('click', () => {
-    settingsModal.classList.add('hidden');
-  });
+  cancelSettings.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
   saveSettings.addEventListener('click', () => {
-    const key = apiKeyInput.value.trim();
-    localStorage.setItem('openrouter-api-key', key);
+    localStorage.setItem('openrouter-api-key', apiKeyInput.value.trim());
     settingsModal.classList.add('hidden');
     updateAIStatusUI();
   });
@@ -202,9 +262,7 @@ function initSettingsModal() {
   });
 
   settingsModal.addEventListener('click', (e) => {
-    if (e.target === settingsModal) {
-      settingsModal.classList.add('hidden');
-    }
+    if (e.target === settingsModal) settingsModal.classList.add('hidden');
   });
 
   updateAIStatusUI();
@@ -221,23 +279,15 @@ function initAIGenerate() {
     const prompt = aiPrompt.value.trim();
     const apiKey = localStorage.getItem('openrouter-api-key') || '';
 
-    if (!prompt) {
-      aiError.textContent = 'Please enter a description';
-      return;
-    }
-
-    if (!apiKey) {
-      aiError.textContent = 'Please set your API key first (click ⚙️ API Key)';
-      return;
-    }
+    if (!prompt) { aiError.textContent = 'Enter a description'; return; }
+    if (!apiKey) { aiError.textContent = 'Set API key first (⚙️)'; return; }
 
     generateBtn.disabled = true;
     generateBtn.textContent = 'Generating...';
     aiError.textContent = '';
 
     try {
-      const genre = aiGenre.value;
-      const notation = await generateNotationWithAPI(apiKey, prompt, genre);
+      const notation = await generateNotationWithAPI(apiKey, prompt, aiGenre.value);
       notationInput.value = notation;
       notationInput.dispatchEvent(new Event('input'));
     } catch (err) {
@@ -249,46 +299,45 @@ function initAIGenerate() {
   });
 
   aiPrompt.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      generateBtn.click();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); generateBtn.click(); }
   });
 }
 
 async function generateNotationWithAPI(apiKey, prompt, genre) {
-  const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-  const MODEL = 'google/gemma-4-26b-a4b-it:free';
-
-  const systemPrompt = `You are a music notation assistant for TonalScript. Users will describe music they want, and you generate notation in TonalScript format.
+  const systemPrompt = `You are a music notation assistant for TonalScript.
 
 FORMAT RULES:
-- Notes: DA, MI, NA, SA, GA, PA, DHA, NI (or custom names)
-- Duration: number after colon (4=quarter, 2=half, 1=whole, 8=eighth)
+- Notes: DA, MI, NA, SA, GA, PA, DHA, NI + octave (DA4, MI3, etc.)
+- Duration: number after colon (4=quarter, 2=half, 1=whole, 8=eighth, 16=sixteenth)
 - Separate notes with commas
-- Example: "DA:4, MI:2, NA:4, SA:1"
+- Support chords: [DA4:4, MI4:4] means play together
+- Support arpeggios: DA4:8, MI4:8, SA4:8
+
+EXAMPLES:
+Simple: DA:4, MI:2, NA:4, SA:2
+Rich: DA4:4, [DA4:4, MI4:4], NA4:8, SA4:8, DA3:2
 
 RESPONSE RULES:
-- Return ONLY the notation string, no explanations
-- For ambient/calm music: use longer durations (2, 4)
-- For upbeat music: use shorter durations (1, 8)
-- Repeat patterns for longer sequences
-- Keep it musical and rhythmic
+- Return ONLY the notation string
+- Use varied octaves (3, 4, 5) for richness
+- Mix long and short notes
+- Add chords [ ] for harmony
+- Keep it musical
 
-Example response: DA:4, MI:2, NA:4, SA:2, PA:4, DHA:1, NI:2, DA:4`;
+Example: DA4:4, [DA4:4, FA4:4], NA4:8, SA4:8, DA3:2, MI4:4`;
 
   const genreContexts = {
-    ambient: 'Create slow, atmospheric ambient music.',
-    gamelan: 'Create traditional Indonesian Gamelan music.',
-    koto: 'Create traditional Japanese Koto music.',
-    shamisen: 'Create traditional Japanese Shamisen music.',
-    cinematic: 'Create epic cinematic music.',
-    lofi: 'Create chill lofi beats.',
-    electronic: 'Create electronic/ambient music.',
-    traditional: 'Create traditional folk music.'
+    ambient: 'Slow, dreamy, atmospheric. Use long notes and space.',
+    gamelan: 'Cyclical, metallic, percussive patterns.',
+    koto: 'Pentatonic, flowing, graceful melodies.',
+    shamisen: 'Rhythmic, percussive, energetic.',
+    cinematic: 'Epic, dramatic, emotional builds.',
+    lofi: 'Chill, relaxed, mellow vibes.',
+    electronic: 'Repetitive, hypnotic, layered.',
+    traditional: 'Simple, memorable folk melodies.'
   };
 
-  const response = await fetch(API_URL, {
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
@@ -297,30 +346,27 @@ Example response: DA:4, MI:2, NA:4, SA:2, PA:4, DHA:1, NI:2, DA:4`;
       'X-Title': 'TonalScript'
     },
     body: JSON.stringify({
-      model: MODEL,
+      model: 'google/gemma-4-26b-a4b-it:free',
       messages: [
         { role: 'system', content: systemPrompt + '\n\n' + (genreContexts[genre] || genreContexts.ambient) },
-        { role: 'user', content: `Genre: ${genre}\nDescription: ${prompt}\n\nGenerate notation. Return ONLY the notation string.` }
+        { role: 'user', content: `Genre: ${genre}\nDescription: ${prompt}\n\nGenerate rich notation.` }
       ],
-      temperature: 0.7,
-      max_tokens: 100
+      temperature: 0.8,
+      max_tokens: 150
     })
   });
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || 'API request failed');
+    throw new Error(error.error?.message || 'API failed');
   }
 
   const data = await response.json();
   let notation = data.choices[0]?.message?.content?.trim();
-
-  if (!notation) {
-    throw new Error('No notation generated');
-  }
+  if (!notation) throw new Error('No notation generated');
 
   notation = notation.replace(/^```[\w]*\n?/gm, '').replace(/```$/gm, '').trim();
-  notation = notation.replace(/^[^A-Z0-9]/im, '');
+  notation = notation.replace(/^[^A-Z0-9\[\]]/im, '');
   notation = notation.split('\n')[0] || notation;
 
   return notation;
@@ -330,14 +376,8 @@ function updateAIStatusUI() {
   const status = document.getElementById('aiStatus');
   const generateBtn = document.getElementById('aiGenerateBtn');
   const hasKey = !!localStorage.getItem('openrouter-api-key');
-
-  if (hasKey) {
-    status.textContent = 'API Key Set';
-    status.classList.add('active');
-    generateBtn.disabled = false;
-  } else {
-    status.textContent = 'No API Key';
-    status.classList.remove('active');
-    generateBtn.disabled = true;
-  }
+  
+  status.textContent = hasKey ? 'API Key Set' : 'No API Key';
+  status.classList.toggle('active', hasKey);
+  generateBtn.disabled = !hasKey;
 }

@@ -1,6 +1,6 @@
 /**
- * Parser module for TonalScript
- * Converts text notation string to array of note objects
+ * Parser module for TonalScript (Enhanced)
+ * Converts text notation string to array of note objects with chord support
  */
 
 /**
@@ -15,7 +15,7 @@ const NOTE_MAP = {
   'LA': 'A4', 'NA': 'A4',
   'SI': 'B4', 'SA': 'B4', 'NI': 'B4',
   'DHA': 'A#4',
-  // Octave variations
+  // With octave
   'DO2': 'C3', 'DO3': 'C4', 'DO4': 'C5', 'DO5': 'C6',
   'RE2': 'D3', 'RE3': 'D4', 'RE4': 'D5', 'RE5': 'D6',
   'MI2': 'E3', 'MI3': 'E4', 'MI4': 'E5', 'MI5': 'E6',
@@ -23,73 +23,109 @@ const NOTE_MAP = {
   'SOL2': 'G3', 'SOL3': 'G4', 'SOL4': 'G5', 'SOL5': 'G6',
   'LA2': 'A3', 'LA3': 'A4', 'LA4': 'A5', 'LA5': 'A6',
   'SI2': 'B3', 'SI3': 'B4', 'SI4': 'B5', 'SI5': 'B6',
+  'DA2': 'C3', 'DA3': 'C4', 'DA4': 'C5', 'DA5': 'C6',
+  'NA2': 'A3', 'NA3': 'A4', 'NA4': 'A5', 'NA5': 'A6',
+  'SA2': 'B3', 'SA3': 'B4', 'SA4': 'B5', 'SA5': 'B6',
+  'MI2': 'E3', 'MI3': 'E4', 'MI4': 'E5', 'MI5': 'E6',
 };
 
-/**
- * Convert custom note name to Tone.js note
- * @param {string} note - Custom note name (e.g., "DA", "MI", "SOL")
- * @returns {string} Tone.js note (e.g., "C4", "E4", "G4")
- */
-function mapNoteToTone(note) {
-  const upperNote = note.toUpperCase().trim();
-  
-  if (NOTE_MAP[upperNote]) {
-    return NOTE_MAP[upperNote];
-  }
-  
-  // If it's already a valid Tone.js note (like C4, D#5), return as is
-  if (/^[A-G][#b]?\d$/.test(upperNote)) {
-    return upperNote;
-  }
-  
-  // Default to C4 if unknown
-  console.warn(`Unknown note "${note}", defaulting to C4`);
+function mapNote(note) {
+  const upper = note.toUpperCase().trim();
+  if (NOTE_MAP[upper]) return NOTE_MAP[upper];
+  if (/^[A-G][#b]?\d$/.test(upper)) return upper;
   return 'C4';
 }
 
 /**
- * Parse notation string to array of ParsedNote objects
- * @param {string} text - Input notation (e.g., "DA:4, MI:2")
- * @returns {Array<{note: string, duration: string}>} Array of notes
+ * Parse notation string to array of notes (supports chords with [])
+ * @param {string} text - Input notation (e.g., "DA4:4, [DA4:4, MI4:4]")
+ * @returns {Array<{note: string, duration: string, isChord: boolean}>}
  */
 export function parseNotation(text) {
-  if (!text || typeof text !== 'string') {
-    return [];
-  }
+  if (!text || typeof text !== 'string') return [];
 
-  const tokens = text.split(',');
   const notes = [];
+  let i = 0;
 
-  for (const token of tokens) {
-    const trimmed = token.trim();
-    if (!trimmed) continue;
+  while (i < text.length) {
+    // Skip whitespace and commas
+    while (i < text.length && (text[i] === ' ' || text[i] === ',' || text[i] === '\n')) i++;
+    if (i >= text.length) break;
 
-    const parts = trimmed.split(':');
-    if (parts.length !== 2) {
-      console.warn(`Invalid token format: "${trimmed}" - expected "NOTE:DURATION"`);
-      continue;
+    // Check for chord [ ]
+    if (text[i] === '[') {
+      i++; // skip [
+      const chordNotes = [];
+      
+      while (i < text.length && text[i] !== ']') {
+        while (i < text.length && (text[i] === ' ' || text[i] === ',')) i++;
+        if (i >= text.length || text[i] === ']') break;
+        
+        const noteStr = parseSingleNote(text, i);
+        if (noteStr) {
+          chordNotes.push(noteStr);
+          i = noteStr.endIndex;
+        } else {
+          i++;
+        }
+      }
+      
+      if (text[i] === ']') i++; // skip ]
+      
+      // Add chord notes with same timing
+      if (chordNotes.length > 0) {
+        const duration = chordNotes[0].duration;
+        chordNotes.forEach(n => {
+          notes.push({ note: mapNote(n.note), duration: n.duration, isChord: true });
+        });
+      }
+    } else {
+      // Single note
+      const noteStr = parseSingleNote(text, i);
+      if (noteStr) {
+        notes.push({ note: mapNote(noteStr.note), duration: noteStr.duration, isChord: false });
+        i = noteStr.endIndex;
+      } else {
+        i++;
+      }
     }
-
-    const rawNote = parts[0].trim();
-    const durationRaw = parts[1].trim();
-
-    if (!rawNote || !durationRaw) {
-      console.warn(`Empty note or duration in token: "${trimmed}"`);
-      continue;
-    }
-
-    const note = mapNoteToTone(rawNote);
-    const duration = parseDuration(durationRaw);
-    
-    if (duration === null) {
-      console.warn(`Invalid duration "${durationRaw}" in token: "${trimmed}"`);
-      continue;
-    }
-
-    notes.push({ note, duration });
   }
 
   return notes;
+}
+
+function parseSingleNote(text, startIndex) {
+  let i = startIndex;
+  
+  // Read note name (letters)
+  let noteStart = i;
+  while (i < text.length && /[A-Za-z]/.test(text[i])) i++;
+  const note = text.slice(noteStart, i);
+  
+  if (!note) return null;
+  
+  // Read optional octave (digits)
+  while (i < text.length && /\d/.test(text[i])) i++;
+  const noteWithOctave = text.slice(noteStart, i);
+  
+  // Skip colon
+  if (i >= text.length || text[i] !== ':') return null;
+  i++; // skip :
+  
+  // Read duration
+  let durStart = i;
+  while (i < text.length && /[\d.]/.test(text[i])) i++;
+  let duration = text.slice(durStart, i);
+  
+  // Convert to Tone.js format
+  if (/^\d+\.?$/.test(duration)) {
+    duration = duration + 'n';
+  }
+  
+  // Skip optional 'n' or 'n.'
+  while (i < text.length && (text[i] === 'n' || text[i] === '.')) i++;
+  
+  return { note: noteWithOctave, duration, endIndex: i };
 }
 
 /**

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TonalScript</title>
+  <title>TonalScript - Music Creator</title>
   <link rel="stylesheet" href="style.css">
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
 </head>
@@ -11,119 +11,119 @@
   <div class="app-container">
     <header>
       <h1>TonalScript</h1>
-      <p class="tagline">Write Text, Hear Music – Instantly.</p>
+      <p class="tagline">Real Music Creator</p>
+      <button id="settingsBtn" class="settings-btn" aria-label="Settings">⚙️</button>
     </header>
 
     <main>
+      <!-- AI Section -->
       <div class="ai-section">
         <div class="ai-header">
           <span class="ai-icon">🤖</span>
-          <span>AI Music Assistant</span>
+          <span>AI Assistant</span>
           <span id="aiStatus" class="ai-status">No API Key</span>
-          <button id="settingsBtn" class="settings-btn-inline" aria-label="Settings">⚙️ API Key</button>
         </div>
         <div class="ai-input-row">
-          <input 
-            type="text" 
-            id="aiPrompt" 
-            placeholder="Describe the music you want (e.g., 'calm forest morning')"
-            aria-label="AI music prompt"
-          >
+          <input type="text" id="aiPrompt" placeholder="Describe the mood you want...">
           <select id="aiGenre">
-            <option value="ambient">Ambient</option>
-            <option value="cinematic">Cinematic</option>
-            <option value="gamelan">Gamelan</option>
-            <option value="koto">Koto</option>
-            <option value="shamisen">Shamisen</option>
-            <option value="lofi">Lo-Fi</option>
-            <option value="electronic">Electronic</option>
-            <option value="traditional">Traditional</option>
-            <option value="jazz">Jazz</option>
-            <option value="blues">Blues</option>
             <option value="pop">Pop</option>
             <option value="rock">Rock</option>
+            <option value="jazz">Jazz</option>
+            <option value="blues">Blues</option>
+            <option value="electronic">Electronic</option>
+            <option value="hiphop">Hip Hop</option>
+            <option value="ambient">Ambient</option>
             <option value="classical">Classical</option>
-            <option value="tropical">Tropical</option>
-            <option value="melancholic">Melancholic</option>
-            <option value="happy">Happy</option>
-            <option value="scary">Scary</option>
-            <option value="meditation">Meditation</option>
-            <option value="workout">Workout</option>
+            <option value="cinematic">Cinematic</option>
+            <option value="lofi">Lo-Fi</option>
             <option value="romantic">Romantic</option>
+            <option value="happy">Happy</option>
+            <option value="melancholic">Melancholic</option>
+            <option value="workout">Workout</option>
+            <option value="meditation">Meditation</option>
+            <option value="traditional">Traditional</option>
+            <option value="gamelan">Gamelan</option>
+            <option value="koto">Koto</option>
           </select>
           <button id="aiGenerateBtn" disabled>Generate</button>
         </div>
         <div id="aiError" class="error-message"></div>
       </div>
 
-      <div class="input-section">
-        <textarea 
-          id="notationInput" 
-          placeholder="DA:4, MI:2, NA:1"
-          aria-label="Music notation input"
-        ></textarea>
-        <div id="inputError" class="error-message"></div>
-      </div>
-
-      <div class="control-bar">
-        <div class="preset-section">
-          <label for="presetSelect">Instrument:</label>
-          <select id="presetSelect">
-            <optgroup label="Modern">
-              <option value="piano">Piano</option>
-              <option value="guitar">Guitar</option>
-              <option value="bass">Bass</option>
-              <option value="synth">Synth</option>
-            </optgroup>
-            <optgroup label="Traditional">
+      <!-- Song Generator -->
+      <div class="generator-section">
+        <h2>🎵 Song Generator</h2>
+        <div class="generator-controls">
+          <div class="control-group">
+            <label>Genre:</label>
+            <select id="genreSelect">
+              <option value="pop">Pop</option>
+              <option value="rock">Rock</option>
+              <option value="jazz">Jazz</option>
+              <option value="blues">Blues</option>
+              <option value="electronic">Electronic</option>
+              <option value="hiphop">Hip Hop</option>
+              <option value="ambient">Ambient</option>
+              <option value="classical">Classical</option>
+              <option value="cinematic">Cinematic</option>
+              <option value="lofi">Lo-Fi</option>
+              <option value="romantic">Romantic</option>
+              <option value="happy">Happy</option>
+              <option value="melancholic">Melancholic</option>
+              <option value="workout">Workout</option>
+              <option value="meditation">Meditation</option>
+              <option value="traditional">Traditional</option>
               <option value="gamelan">Gamelan</option>
               <option value="koto">Koto</option>
-              <option value="shamisen">Shamisen</option>
-            </optgroup>
-            <optgroup label="Ambient">
-              <option value="pad">Ambient Pad</option>
-              <option value="strings">Strings</option>
-              <option value="bells">Bells</option>
-            </optgroup>
-          </select>
+            </select>
+          </div>
+          <button id="generateSongBtn" class="generate-btn">Generate Song</button>
         </div>
+        <div id="songInfo" class="song-info"></div>
+      </div>
 
-        <div class="bpm-section">
-          <label for="bpmSlider">BPM: <span id="bpmValue">120</span></label>
-          <input 
-            type="range" 
-            id="bpmSlider" 
-            min="40" 
-            max="240" 
-            value="120"
-          >
+      <!-- Playback Controls -->
+      <div class="playback-section">
+        <button id="playBtn" class="play-btn" disabled>▶ Play</button>
+        <button id="stopBtn" class="stop-btn" disabled>⏹ Stop</button>
+        <button id="exportBtn" class="export-btn" disabled>💾 Export</button>
+      </div>
+
+      <!-- Tracks Display -->
+      <div class="tracks-section">
+        <div class="track">
+          <div class="track-header melody">🎤 Melody</div>
+          <div class="track-content" id="melodyTrack">Generate a song to see melody</div>
         </div>
-
-        <div class="playback-controls">
-          <button id="playBtn" disabled aria-label="Play">▶</button>
-          <button id="pauseBtn" disabled aria-label="Pause">⏸</button>
-          <button id="stopBtn" disabled aria-label="Stop">⏹</button>
+        <div class="track">
+          <div class="track-header chords">🎹 Chords</div>
+          <div class="track-content" id="chordsTrack">Generate a song to see chords</div>
         </div>
-
-        <div class="export-section">
-          <button id="exportBtn" disabled aria-label="Export WAV">💾 Export</button>
+        <div class="track">
+          <div class="track-header bass">🎸 Bass</div>
+          <div class="track-content" id="bassTrack">Generate a song to see bass</div>
+        </div>
+        <div class="track">
+          <div class="track-header drums">🥁 Drums</div>
+          <div class="track-content" id="drumsTrack">Generate a song to see drums</div>
         </div>
       </div>
     </main>
 
+    <!-- Export Modal -->
     <div id="exportModal" class="modal hidden">
       <div class="modal-content">
         <h2>Export Audio</h2>
         <div class="format-section">
           <label>Format:</label>
           <select id="formatSelect">
-            <option value="wav">WAV</option>
-            <option value="mp3">MP3</option>
+            <option value="wav">WAV (High Quality)</option>
+            <option value="mp3">MP3 (Small Size)</option>
           </select>
         </div>
         <div class="duration-section">
-          <label for="durationSlider">Duration: <span id="durationValue">10</span>s</label>
-          <input type="range" id="durationSlider" min="5" max="60" value="10">
+          <label>Duration: <span id="durationValue">30</span>s</label>
+          <input type="range" id="durationSlider" min="10" max="60" value="30">
         </div>
         <div class="modal-actions">
           <button id="cancelExport">Cancel</button>
@@ -132,28 +132,17 @@
       </div>
     </div>
 
+    <!-- Settings Modal -->
     <div id="settingsModal" class="modal hidden">
       <div class="modal-content">
         <h2>⚙️ Settings</h2>
         <div class="settings-section">
-          <label for="apiKeyInput">OpenRouter API Key (BYOK):</label>
+          <label>OpenRouter API Key:</label>
           <p class="hint">Get free key at <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a></p>
           <div class="api-key-row">
-            <input 
-              type="password" 
-              id="apiKeyInput" 
-              placeholder="sk-or-v1-..."
-            >
+            <input type="password" id="apiKeyInput" placeholder="sk-or-v1-...">
             <button id="toggleKeyVisibility">👁️</button>
           </div>
-        </div>
-        <div class="settings-section">
-          <label for="modelSelect">AI Model:</label>
-          <select id="modelSelect">
-            <option value="google/gemma-4-26b-a4b-it:free">Gemma 4 26B (Free)</option>
-            <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (Free)</option>
-            <option value="qwen/qwen3-coder:free">Qwen3 Coder (Free)</option>
-          </select>
         </div>
         <div class="modal-actions">
           <button id="cancelSettings">Cancel</button>

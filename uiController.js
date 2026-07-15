@@ -85,10 +85,6 @@ export class UIController {
       this.ai.setModel(e.target.value);
     });
 
-    document.querySelectorAll('#settingsBtn, .settings-btn-inline').forEach(btn => {
-      btn.addEventListener('click', () => this.showSettings());
-    });
-
     document.addEventListener('click', () => {
       if (Tone.context.state !== 'running') {
         Tone.context.resume();

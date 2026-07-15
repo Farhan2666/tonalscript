@@ -43,24 +43,6 @@ header h1 {
   font-size: 0.9rem;
 }
 
-.settings-btn {
-  position: absolute;
-  top: 0;
-  right: 0;
-  background: var(--primary);
-  color: white;
-  border: none;
-  font-size: 1rem;
-  cursor: pointer;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.settings-btn:hover {
-  background: #5a3d83;
-}
-
 .settings-btn-inline {
   margin-left: auto;
   background: var(--primary);

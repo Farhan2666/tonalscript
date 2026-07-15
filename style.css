@@ -317,6 +317,25 @@ header h1 {
   color: #666;
 }
 
+.format-section {
+  margin-bottom: 1.5rem;
+}
+
+.format-section label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #666;
+}
+
+#formatSelect {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: 'Fira Code', monospace;
+  background: white;
+}
+
 #durationSlider {
   width: 100%;
   accent-color: var(--primary);

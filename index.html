@@ -102,9 +102,16 @@
     <div id="exportModal" class="modal hidden">
       <div class="modal-content">
         <h2>Export Audio</h2>
+        <div class="format-section">
+          <label>Format:</label>
+          <select id="formatSelect">
+            <option value="wav">WAV</option>
+            <option value="mp3">MP3</option>
+          </select>
+        </div>
         <div class="duration-section">
-          <label for="durationSlider">Duration: <span id="durationValue">30</span>s</label>
-          <input type="range" id="durationSlider" min="10" max="60" value="30">
+          <label for="durationSlider">Duration: <span id="durationValue">10</span>s</label>
+          <input type="range" id="durationSlider" min="5" max="60" value="10">
         </div>
         <div class="modal-actions">
           <button id="cancelExport">Cancel</button>
@@ -145,6 +152,7 @@
   </div>
 
   <script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

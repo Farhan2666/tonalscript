@@ -5,10 +5,12 @@
 
 import { parseNotation, validateNotation } from './parser.js';
 import { AudioEngine } from './audioEngine.js';
+import { AIAssistant } from './aiAssistant.js';
 
 export class UIController {
   constructor() {
     this.engine = new AudioEngine();
+    this.ai = new AIAssistant();
     this.playbackState = 'idle';
     this.bpm = 120;
     this.lastNotation = '';
@@ -27,7 +29,19 @@ export class UIController {
       durationSlider: document.getElementById('durationSlider'),
       durationValue: document.getElementById('durationValue'),
       cancelExport: document.getElementById('cancelExport'),
-      confirmExport: document.getElementById('confirmExport')
+      confirmExport: document.getElementById('confirmExport'),
+      aiPrompt: document.getElementById('aiPrompt'),
+      aiGenre: document.getElementById('aiGenre'),
+      aiGenerateBtn: document.getElementById('aiGenerateBtn'),
+      aiStatus: document.getElementById('aiStatus'),
+      aiError: document.getElementById('aiError'),
+      settingsBtn: document.getElementById('settingsBtn'),
+      settingsModal: document.getElementById('settingsModal'),
+      apiKeyInput: document.getElementById('apiKeyInput'),
+      modelSelect: document.getElementById('modelSelect'),
+      toggleKeyVisibility: document.getElementById('toggleKeyVisibility'),
+      cancelSettings: document.getElementById('cancelSettings'),
+      saveSettings: document.getElementById('saveSettings')
     };
 
     this.init();
@@ -37,6 +51,7 @@ export class UIController {
     await this.engine.init();
     this.loadState();
     this.bindEvents();
+    this.updateAIStatus();
     this.updateUI();
   }
 
@@ -52,6 +67,22 @@ export class UIController {
     this.elements.confirmExport.addEventListener('click', () => this.handleExport());
     this.elements.durationSlider.addEventListener('input', (e) => {
       this.elements.durationValue.textContent = e.target.value;
+    });
+
+    this.elements.aiGenerateBtn.addEventListener('click', () => this.handleAIGenerate());
+    this.elements.aiPrompt.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        this.handleAIGenerate();
+      }
+    });
+
+    this.elements.settingsBtn.addEventListener('click', () => this.showSettings());
+    this.elements.cancelSettings.addEventListener('click', () => this.hideSettings());
+    this.elements.saveSettings.addEventListener('click', () => this.saveSettings());
+    this.elements.toggleKeyVisibility.addEventListener('click', () => this.toggleKeyVisibility());
+    this.elements.modelSelect.addEventListener('change', (e) => {
+      this.ai.setModel(e.target.value);
     });
 
     document.addEventListener('click', () => {
@@ -147,6 +178,64 @@ export class UIController {
 
     this.elements.playBtn.textContent = isPlaying ? '⏸' : '▶';
     this.elements.pauseBtn.textContent = isPlaying ? '⏸' : '▶';
+  }
+
+  async handleAIGenerate() {
+    const prompt = this.elements.aiPrompt.value.trim();
+    if (!prompt || !this.ai.hasApiKey()) return;
+
+    this.elements.aiGenerateBtn.disabled = true;
+    this.elements.aiGenerateBtn.textContent = 'Generating...';
+    this.elements.aiError.textContent = '';
+
+    try {
+      const genre = this.elements.aiGenre.value;
+      const notation = await this.ai.generateNotation(prompt, genre);
+      this.elements.notationInput.value = notation;
+      this.handleInputChange();
+    } catch (err) {
+      this.elements.aiError.textContent = err.message;
+    } finally {
+      this.elements.aiGenerateBtn.disabled = false;
+      this.elements.aiGenerateBtn.textContent = 'Generate';
+    }
+  }
+
+  updateAIStatus() {
+    if (this.ai.hasApiKey()) {
+      this.elements.aiStatus.textContent = 'API Key Set';
+      this.elements.aiStatus.classList.add('active');
+      this.elements.aiGenerateBtn.disabled = false;
+    } else {
+      this.elements.aiStatus.textContent = 'No API Key';
+      this.elements.aiStatus.classList.remove('active');
+      this.elements.aiGenerateBtn.disabled = true;
+    }
+  }
+
+  showSettings() {
+    this.elements.apiKeyInput.value = this.ai.apiKey;
+    this.elements.modelSelect.value = this.ai.model;
+    this.elements.settingsModal.classList.remove('hidden');
+  }
+
+  hideSettings() {
+    this.elements.settingsModal.classList.add('hidden');
+  }
+
+  saveSettings() {
+    const apiKey = this.elements.apiKeyInput.value.trim();
+    const model = this.elements.modelSelect.value;
+
+    this.ai.saveApiKey(apiKey);
+    this.ai.setModel(model);
+    this.updateAIStatus();
+    this.hideSettings();
+  }
+
+  toggleKeyVisibility() {
+    const input = this.elements.apiKeyInput;
+    input.type = input.type === 'password' ? 'text' : 'password';
   }
 
   showExportModal() {

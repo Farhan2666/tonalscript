@@ -12,9 +12,38 @@
     <header>
       <h1>TonalScript</h1>
       <p class="tagline">Write Text, Hear Music – Instantly.</p>
+      <button id="settingsBtn" class="settings-btn" aria-label="Settings">⚙️</button>
     </header>
 
     <main>
+      <div class="ai-section">
+        <div class="ai-header">
+          <span class="ai-icon">🤖</span>
+          <span>AI Music Assistant</span>
+          <span id="aiStatus" class="ai-status">No API Key</span>
+        </div>
+        <div class="ai-input-row">
+          <input 
+            type="text" 
+            id="aiPrompt" 
+            placeholder="Describe the music you want (e.g., 'calm forest morning')"
+            aria-label="AI music prompt"
+          >
+          <select id="aiGenre">
+            <option value="ambient">Ambient</option>
+            <option value="gamelan">Gamelan</option>
+            <option value="koto">Koto</option>
+            <option value="shamisen">Shamisen</option>
+            <option value="cinematic">Cinematic</option>
+            <option value="lofi">Lo-Fi</option>
+            <option value="electronic">Electronic</option>
+            <option value="traditional">Traditional</option>
+          </select>
+          <button id="aiGenerateBtn" disabled>Generate</button>
+        </div>
+        <div id="aiError" class="error-message"></div>
+      </div>
+
       <div class="input-section">
         <textarea 
           id="notationInput" 
@@ -26,11 +55,20 @@
 
       <div class="control-bar">
         <div class="preset-section">
-          <label for="presetSelect">Preset:</label>
+          <label for="presetSelect">Sound:</label>
           <select id="presetSelect">
-            <option value="gamelan">Gamelan</option>
-            <option value="koto">Koto</option>
-            <option value="shamisen">Shamisen</option>
+            <optgroup label="Traditional">
+              <option value="gamelan">Gamelan</option>
+              <option value="koto">Koto</option>
+              <option value="shamisen">Shamisen</option>
+            </optgroup>
+            <optgroup label="Modern">
+              <option value="ambient">Ambient</option>
+              <option value="cinematic">Cinematic</option>
+              <option value="lofi">Lo-Fi</option>
+              <option value="electronic">Electronic</option>
+              <option value="traditional">Traditional</option>
+            </optgroup>
           </select>
         </div>
 
@@ -67,6 +105,37 @@
         <div class="modal-actions">
           <button id="cancelExport">Cancel</button>
           <button id="confirmExport">Download</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="settingsModal" class="modal hidden">
+      <div class="modal-content">
+        <h2>⚙️ Settings</h2>
+        <div class="settings-section">
+          <label for="apiKeyInput">OpenRouter API Key (BYOK):</label>
+          <p class="hint">Get free key at <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a></p>
+          <div class="api-key-row">
+            <input 
+              type="password" 
+              id="apiKeyInput" 
+              placeholder="sk-or-v1-..."
+            >
+            <button id="toggleKeyVisibility">👁️</button>
+          </div>
+        </div>
+        <div class="settings-section">
+          <label for="modelSelect">AI Model:</label>
+          <select id="modelSelect">
+            <option value="deepseek/deepseek-chat:free">DeepSeek Chat (Free)</option>
+            <option value="meta-llama/llama-3.1-8b-instruct:free">Llama 3.1 8B (Free)</option>
+            <option value="google/gemma-2-9b-it:free">Gemma 2 9B (Free)</option>
+            <option value="mistralai/mistral-7b-instruct:free">Mistral 7B (Free)</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button id="cancelSettings">Cancel</button>
+          <button id="saveSettings">Save</button>
         </div>
       </div>
     </div>

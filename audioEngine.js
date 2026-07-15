@@ -33,6 +33,56 @@ const PRESETS = {
       reverb: { decay: 2, wet: 0.35 },
       delay: { delayTime: "16n", feedback: 0.25, wet: 0.2 }
     }
+  },
+  ambient: {
+    synth: {
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.5, decay: 0.3, sustain: 0.4, release: 1 }
+    },
+    effects: {
+      reverb: { decay: 4, wet: 0.6 },
+      delay: { delayTime: "4n", feedback: 0.5, wet: 0.4 }
+    }
+  },
+  cinematic: {
+    synth: {
+      oscillator: { type: "sawtooth" },
+      envelope: { attack: 0.3, decay: 0.4, sustain: 0.3, release: 0.8 }
+    },
+    effects: {
+      reverb: { decay: 3.5, wet: 0.55 },
+      delay: { delayTime: "8n", feedback: 0.35, wet: 0.3 }
+    }
+  },
+  lofi: {
+    synth: {
+      oscillator: { type: "triangle" },
+      envelope: { attack: 0.2, decay: 0.25, sustain: 0.35, release: 0.6 }
+    },
+    effects: {
+      reverb: { decay: 2, wet: 0.3 },
+      delay: { delayTime: "8n.", feedback: 0.4, wet: 0.35 }
+    }
+  },
+  electronic: {
+    synth: {
+      oscillator: { type: "square" },
+      envelope: { attack: 0.05, decay: 0.2, sustain: 0.3, release: 0.4 }
+    },
+    effects: {
+      reverb: { decay: 2.5, wet: 0.45 },
+      delay: { delayTime: "16n", feedback: 0.3, wet: 0.25 }
+    }
+  },
+  traditional: {
+    synth: {
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.1, decay: 0.2, sustain: 0.25, release: 0.5 }
+    },
+    effects: {
+      reverb: { decay: 2, wet: 0.35 },
+      delay: { delayTime: "8n", feedback: 0.25, wet: 0.2 }
+    }
   }
 };
 

@@ -1,99 +1,76 @@
 /**
- * TonalScript - Main Application (Clean Audio)
+ * TonalScript - Main Application v2 (Clean)
  */
 
-import { AudioEngine, INSTRUMENTS, NOTE_MAP } from './audioEngine.js';
+import { CleanAudioEngine, INSTRUMENTS, NOTE_MAP } from './audioEngine.js';
 
 let engine = null;
 let isPlaying = false;
 
-function parseNotation(text) {
-  if (!text) return [];
-  const notes = [];
-  const tokens = text.split(',');
-  for (const token of tokens) {
-    const trimmed = token.trim();
-    if (!trimmed || trimmed === '[' || trimmed === ']') continue;
-    const parts = trimmed.split(':');
-    if (parts.length !== 2) continue;
-    
-    const noteUpper = parts[0].toUpperCase().trim();
-    let note = NOTE_MAP[noteUpper] || ( /^[A-G][#b]?\d$/.test(noteUpper) ? noteUpper : 'C4');
-    
-    let dur = parts[1].trim().replace(/\]/g, '');
-    if (/^\d+\.?$/.test(dur)) dur = dur + 'n';
-    if (/^\d+n\.?$/.test(dur) || /^\d+n$/.test(dur)) {
-      notes.push({ note, duration: dur });
-    }
-  }
-  return notes;
-}
-
 document.addEventListener('DOMContentLoaded', () => {
-  initSettingsModal();
-  initAIGenerate();
-  initPlayback();
-  initInstrumentSelector();
+  setupSettings();
+  setupAIGenerate();
+  setupPlayback();
+  setupInstrumentSelect();
 });
 
-async function initEngine() {
-  if (engine) return true;
+async function ensureEngine() {
+  if (engine && engine.synth) return true;
   try {
     await Tone.start();
-    engine = new AudioEngine();
+    engine = new CleanAudioEngine();
     await engine.init();
-    console.log('Engine ready');
     return true;
   } catch (err) {
-    console.error('Engine init failed:', err);
+    console.error('Audio init failed:', err);
     return false;
   }
 }
 
-function initInstrumentSelector() {
+function setupInstrumentSelect() {
   const select = document.getElementById('presetSelect');
   if (!select) return;
-  
-  // Clear existing options
+
   select.innerHTML = '';
-  
-  // Group by type
-  const groups = {};
-  Object.entries(INSTRUMENTS).forEach(([key, inst]) => {
-    if (!groups[inst.type]) groups[inst.type] = [];
-    groups[inst.type].push({ key, name: inst.name });
-  });
-  
-  Object.entries(groups).forEach(([type, instruments]) => {
+  const types = ['Modern', 'Traditional', 'Ambient'];
+  const typeMap = {
+    Modern: ['piano', 'guitar', 'bass', 'synth', 'flute'],
+    Traditional: ['gamelan', 'koto'],
+    Ambient: ['pad', 'strings', 'bells']
+  };
+
+  types.forEach(type => {
     const group = document.createElement('optgroup');
-    group.label = type.charAt(0).toUpperCase() + type.slice(1);
-    instruments.forEach(inst => {
-      const option = document.createElement('option');
-      option.value = inst.key;
-      option.textContent = inst.name;
-      group.appendChild(option);
+    group.label = type;
+    typeMap[type].forEach(key => {
+      if (INSTRUMENTS[key]) {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = INSTRUMENTS[key].name;
+        group.appendChild(opt);
+      }
     });
     select.appendChild(group);
   });
-  
-  select.addEventListener('change', () => {
+
+  select.onchange = () => {
     if (engine) engine.setInstrument(select.value);
-  });
+  };
 }
 
-function initPlayback() {
+function setupPlayback() {
   const playBtn = document.getElementById('playBtn');
   const pauseBtn = document.getElementById('pauseBtn');
   const stopBtn = document.getElementById('stopBtn');
-  const notationInput = document.getElementById('notationInput');
-  const inputError = document.getElementById('inputError');
+  const textarea = document.getElementById('notationInput');
+  const errorEl = document.getElementById('inputError');
   const bpmSlider = document.getElementById('bpmSlider');
   const bpmValue = document.getElementById('bpmValue');
-  const presetSelect = document.getElementById('presetSelect');
+  const instrumentSelect = document.getElementById('presetSelect');
 
-  notationInput.addEventListener('input', () => {
-    playBtn.disabled = !notationInput.value.trim() || isPlaying;
-    inputError.textContent = '';
+  textarea.addEventListener('input', () => {
+    playBtn.disabled = !textarea.value.trim() || isPlaying;
+    errorEl.textContent = '';
   });
 
   bpmSlider.addEventListener('input', () => {
@@ -102,42 +79,30 @@ function initPlayback() {
   });
 
   playBtn.addEventListener('click', async () => {
-    const text = notationInput.value.trim();
+    const text = textarea.value.trim();
     if (!text) return;
 
-    const ready = await initEngine();
-    if (!ready) {
-      inputError.textContent = 'Failed to init audio';
+    if (!await ensureEngine()) {
+      errorEl.textContent = 'Click anywhere first to enable audio';
       return;
     }
 
-    const notes = parseNotation(text);
-    if (notes.length === 0) {
-      inputError.textContent = 'No valid notes';
+    if (instrumentSelect.value) engine.setInstrument(instrumentSelect.value);
+
+    const notes = engine.parseNotation(text);
+    if (!notes.length) {
+      errorEl.textContent = 'No valid notes found';
       return;
     }
 
     engine.stop();
-    if (presetSelect.value) engine.setInstrument(presetSelect.value);
-    Tone.Transport.bpm.value = parseInt(bpmSlider.value);
-
-    // Play notes directly - clean sound
-    notes.forEach(({ note, duration }, i) => {
-      Tone.Transport.scheduleOnce((time) => {
-        try {
-          engine.synth.triggerAttackRelease(note, duration, time);
-        } catch (e) {}
-      }, `+${i * 0.4}`);
-      engine.scheduledEvents.push(i);
-    });
-
-    Tone.Transport.start();
+    engine.playNotes(notes, parseInt(bpmSlider.value));
     isPlaying = true;
-    engine.isPlaying = true;
+
     playBtn.disabled = true;
     pauseBtn.disabled = false;
     stopBtn.disabled = false;
-    notationInput.readOnly = true;
+    textarea.readOnly = true;
   });
 
   pauseBtn.addEventListener('click', () => {
@@ -155,7 +120,7 @@ function initPlayback() {
     playBtn.disabled = false;
     pauseBtn.disabled = true;
     stopBtn.disabled = true;
-    notationInput.readOnly = false;
+    textarea.readOnly = false;
   });
 
   document.addEventListener('keydown', (e) => {
@@ -165,116 +130,130 @@ function initPlayback() {
     }
   });
 
-  // Enable play if notation exists
-  const savedState = localStorage.getItem('tonalscript-state');
-  if (savedState) {
-    try {
-      const state = JSON.parse(savedState);
-      if (state.lastNotation) {
-        notationInput.value = state.lastNotation;
-        playBtn.disabled = false;
-      }
-    } catch (e) {}
-  }
-}
-
-function initSettingsModal() {
-  const settingsBtn = document.getElementById('settingsBtn');
-  const settingsModal = document.getElementById('settingsModal');
-  const cancelSettings = document.getElementById('cancelSettings');
-  const saveSettings = document.getElementById('saveSettings');
-  const toggleKeyVisibility = document.getElementById('toggleKeyVisibility');
-  const apiKeyInput = document.getElementById('apiKeyInput');
-
-  apiKeyInput.value = localStorage.getItem('openrouter-api-key') || '';
-
-  settingsBtn.addEventListener('click', () => {
-    apiKeyInput.value = localStorage.getItem('openrouter-api-key') || '';
-    settingsModal.classList.remove('hidden');
-  });
-
-  cancelSettings.addEventListener('click', () => settingsModal.classList.add('hidden'));
-
-  saveSettings.addEventListener('click', () => {
-    localStorage.setItem('openrouter-api-key', apiKeyInput.value.trim());
-    settingsModal.classList.add('hidden');
-    updateAIStatusUI();
-  });
-
-  toggleKeyVisibility.addEventListener('click', () => {
-    apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
-  });
-
-  settingsModal.addEventListener('click', (e) => {
-    if (e.target === settingsModal) settingsModal.classList.add('hidden');
-  });
-
-  updateAIStatusUI();
-}
-
-function initAIGenerate() {
-  const generateBtn = document.getElementById('aiGenerateBtn');
-  const aiPrompt = document.getElementById('aiPrompt');
-  const aiGenre = document.getElementById('aiGenre');
-  const aiError = document.getElementById('aiError');
-  const notationInput = document.getElementById('notationInput');
-
-  generateBtn.addEventListener('click', async () => {
-    const prompt = aiPrompt.value.trim();
-    const apiKey = localStorage.getItem('openrouter-api-key') || '';
-
-    if (!prompt) { aiError.textContent = 'Enter description'; return; }
-    if (!apiKey) { aiError.textContent = 'Set API key first'; return; }
-
-    generateBtn.disabled = true;
-    generateBtn.textContent = 'Generating...';
-    aiError.textContent = '';
-
-    try {
-      const notation = await generateNotationWithAPI(apiKey, prompt, aiGenre.value);
-      notationInput.value = notation;
-      notationInput.dispatchEvent(new Event('input'));
-      document.getElementById('playBtn').disabled = false;
-    } catch (err) {
-      aiError.textContent = err.message;
-    } finally {
-      generateBtn.disabled = false;
-      generateBtn.textContent = 'Generate';
+  // Load saved state
+  try {
+    const saved = JSON.parse(localStorage.getItem('tonalscript-state') || '{}');
+    if (saved.lastNotation) {
+      textarea.value = saved.lastNotation;
+      playBtn.disabled = false;
     }
-  });
-
-  aiPrompt.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); generateBtn.click(); }
-  });
+    if (saved.bpm) {
+      bpmSlider.value = saved.bpm;
+      bpmValue.textContent = saved.bpm;
+    }
+    if (saved.instrument && instrumentSelect.querySelector(`value="${saved.instrument}"`)) {
+      instrumentSelect.value = saved.instrument;
+    }
+  } catch(e) {}
 }
 
-async function generateNotationWithAPI(apiKey, prompt, genre) {
-  const systemPrompt = `You are a music notation assistant for TonalScript.
+function setupSettings() {
+  const btn = document.getElementById('settingsBtn');
+  const modal = document.getElementById('settingsModal');
+  const cancel = document.getElementById('cancelSettings');
+  const save = document.getElementById('saveSettings');
+  const toggle = document.getElementById('toggleKeyVisibility');
+  const input = document.getElementById('apiKeyInput');
+
+  input.value = localStorage.getItem('openrouter-api-key') || '';
+
+  btn.onclick = () => {
+    input.value = localStorage.getItem('openrouter-api-key') || '';
+    modal.classList.remove('hidden');
+  };
+
+  cancel.onclick = () => modal.classList.add('hidden');
+
+  save.onclick = () => {
+    localStorage.setItem('openrouter-api-key', input.value.trim());
+    modal.classList.add('hidden');
+    updateAIStatus();
+  };
+
+  toggle.onclick = () => {
+    input.type = input.type === 'password' ? 'text' : 'password';
+  };
+
+  modal.onclick = (e) => {
+    if (e.target === modal) modal.classList.add('hidden');
+  };
+}
+
+function setupAIGenerate() {
+  const btn = document.getElementById('aiGenerateBtn');
+  const prompt = document.getElementById('aiPrompt');
+  const genre = document.getElementById('aiGenre');
+  const error = document.getElementById('aiError');
+  const textarea = document.getElementById('notationInput');
+  const playBtn = document.getElementById('playBtn');
+
+  btn.onclick = async () => {
+    const text = prompt.value.trim();
+    const key = localStorage.getItem('openrouter-api-key') || '';
+
+    if (!text) { error.textContent = 'Enter a description'; return; }
+    if (!key) { error.textContent = 'Set API key first'; return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    error.textContent = '';
+
+    try {
+      const notation = await callOpenRouterAPI(key, text, genre.value);
+      textarea.value = notation;
+      textarea.dispatchEvent(new Event('input'));
+      playBtn.disabled = false;
+      
+      // Save state
+      localStorage.setItem('tonalscript-state', JSON.stringify({
+        lastNotation: notation,
+        bpm: document.getElementById('bpmSlider').value,
+        instrument: document.getElementById('presetSelect').value
+      }));
+    } catch (err) {
+      error.textContent = err.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Generate';
+    }
+  };
+
+  prompt.onkeydown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      btn.click();
+    }
+  };
+}
+
+async function callOpenRouterAPI(apiKey, prompt, genre) {
+  const context = {
+    ambient: 'Slow, peaceful, dreamy. Use notes: C4, E4, G4, A4 with long durations.',
+    gamelan: 'Rhythmic metallic patterns. Use notes: C4, D4, E4, G4, A4.',
+    koto: 'Flowing pentatonic. Use notes: C4, D4, E4, G4, A4.',
+    shamisen: 'Energetic, rhythmic. Use notes: C4, E4, A4, B4.',
+    cinematic: 'Epic emotional. Use notes: C4, D4, E4, F4, G4, A4, B4.',
+    lofi: 'Chill relaxed. Use notes: C4, E4, G4, A4, B4.',
+    electronic: 'Repetitive hypnotic. Use notes: C4, D4, E4, G4.',
+    traditional: 'Simple folk. Use notes: C4, D4, E4, G4, A4.'
+  };
+
+  const systemPrompt = `You are a music notation generator for TonalScript.
 
 FORMAT: NOTE:DURATION (comma separated)
-- Notes: DA, MI, NA, SA, GA, PA, DHA, NI + octave (DA4, MI3)
-- Duration: 4=quarter, 2=half, 1=whole, 8=eighth, 16=sixteenth
-- Example: DA4:4, MI4:2, NA4:4, SA3:2
+- Notes: C4, D4, E4, F4, G4, A4, B4 (middle octave)
+- Notes: C3, D3, E3, F3, G3, A3, B3 (low octave)  
+- Notes: C5, D5, E5, F5, G5, A5, B5 (high octave)
+- Sharps: C#4, D#4, F#4, G#4, A#4
+- Duration: 4=quarter, 2=half, 8=eighth, 16=sixteenth
+- Example: C4:4, E4:2, G4:4, A3:2
 
 RULES:
-- Return ONLY notation string
-- Use octaves 3-5 for variety
-- Mix durations for rhythm
-- Keep it simple and clean
-- No chords needed
-
-Example: DA4:4, MI4:2, NA4:4, SA3:2, GA4:4, PA4:2`;
-
-  const genreContexts = {
-    ambient: 'Slow, peaceful, atmospheric. Use longer notes.',
-    gamelan: 'Cyclical, rhythmic patterns.',
-    koto: 'Flowing pentatonic melodies.',
-    shamisen: 'Energetic, percussive.',
-    cinematic: 'Epic, emotional.',
-    lofi: 'Chill, relaxed.',
-    electronic: 'Repetitive, hypnotic.',
-    traditional: 'Simple folk melodies.'
-  };
+- Return ONLY the notation string
+- 8-16 notes per melody
+- Mix short and long notes
+- Use different octaves for variety
+- Keep it musical and pleasant`;
 
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
@@ -287,38 +266,41 @@ Example: DA4:4, MI4:2, NA4:4, SA3:2, GA4:4, PA4:2`;
     body: JSON.stringify({
       model: 'google/gemma-4-26b-a4b-it:free',
       messages: [
-        { role: 'system', content: systemPrompt + '\n\n' + (genreContexts[genre] || '') },
-        { role: 'user', content: `Genre: ${genre}\nDescription: ${prompt}` }
+        { role: 'system', content: systemPrompt + '\n\nGenre context: ' + (context[genre] || context.ambient) },
+        { role: 'user', content: `Generate a ${genre} melody: ${prompt}` }
       ],
       temperature: 0.7,
-      max_tokens: 100
+      max_tokens: 150
     })
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || 'API failed');
+    const err = await response.json();
+    throw new Error(err.error?.message || 'API failed');
   }
 
   const data = await response.json();
   let notation = data.choices[0]?.message?.content?.trim();
   if (!notation) throw new Error('No notation generated');
 
+  // Clean
   notation = notation.replace(/^```[\w]*\n?/gm, '').replace(/```$/gm, '').trim();
   notation = notation.replace(/^[^A-Z0-9]/im, '');
-  notation = notation.split('\n')[0] || notation;
+  notation = notation.split('\n')[0];
 
   return notation;
 }
 
-function updateAIStatusUI() {
+function updateAIStatus() {
   const status = document.getElementById('aiStatus');
-  const generateBtn = document.getElementById('aiGenerateBtn');
+  const btn = document.getElementById('aiGenerateBtn');
   const hasKey = !!localStorage.getItem('openrouter-api-key');
   
   if (status) {
-    status.textContent = hasKey ? 'API Key Set' : 'No API Key';
+    status.textContent = hasKey ? 'API Key Set ✓' : 'No API Key';
     status.classList.toggle('active', hasKey);
   }
-  if (generateBtn) generateBtn.disabled = !hasKey;
+  if (btn) btn.disabled = !hasKey;
 }
+
+updateAIStatus();

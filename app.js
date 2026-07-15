@@ -445,53 +445,58 @@ async function doExport(duration, format) {
   const textarea = document.getElementById('notationInput');
   const text = textarea.value.trim();
   const bpm = parseInt(document.getElementById('bpmSlider').value);
-  const instSelect = document.getElementById('presetSelect');
 
-  // Create temporary engine for recording
   await ensureEngine();
-  if (instSelect.value) engine.setInstrument(instSelect.value);
-  
   const notes = engine.parseNotation(text);
   if (!notes.length) throw new Error('No valid notes');
 
-  // Create recorder
+  // Create simple synth for recording (works with Recorder)
+  const recordSynth = new Tone.Synth({
+    oscillator: { type: "sine" },
+    envelope: { attack: 0.02, decay: 0.3, sustain: 0.4, release: 0.5 },
+    volume: -10
+  }).toDestination();
+
   const recorder = new Tone.Recorder();
-  engine.synth.connect(recorder);
+  recordSynth.connect(recorder);
 
   // Start recording
   await recorder.start();
 
-  // Play
-  engine.stop();
+  // Play notes with record synth
   Tone.Transport.bpm.value = bpm;
   const spacing = 60 / bpm / 2;
+  
   notes.forEach(({ note, duration }, i) => {
     Tone.Transport.scheduleOnce((time) => {
       try {
-        if (engine.synth instanceof Tone.PluckSynth) {
-          engine.synth.triggerAttack(note, time);
-        } else {
-          engine.synth.triggerAttackRelease(note, duration, time);
-        }
-      } catch(e) {}
+        recordSynth.triggerAttackRelease(note, duration, time);
+      } catch(e) { console.warn('Note error:', e); }
     }, `+${i * spacing}`);
   });
+  
   Tone.Transport.start();
 
-  // Wait
+  // Wait for duration
   await new Promise(r => setTimeout(r, duration * 1000));
 
   // Stop
-  engine.stop();
+  Tone.Transport.stop();
+  Tone.Transport.position = 0;
   const recording = await recorder.stop();
-  engine.synth.disconnect(recorder);
+  recordSynth.dispose();
 
-  if (!recording) throw new Error('Recording failed');
+  if (!recording) throw new Error('Recording failed - no audio captured');
 
   // Download
   if (format === 'mp3') {
-    const blob = await wavToMp3(recording);
-    download(blob, 'tonalscript-export.mp3');
+    try {
+      const blob = await wavToMp3(recording);
+      download(blob, 'tonalscript-export.mp3');
+    } catch(e) {
+      console.warn('MP3 failed, using WAV:', e);
+      download(new Blob([recording], { type: 'audio/wav' }), 'tonalscript-export.wav');
+    }
   } else {
     download(new Blob([recording], { type: 'audio/wav' }), 'tonalscript-export.wav');
   }

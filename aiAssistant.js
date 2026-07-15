@@ -5,7 +5,7 @@
  */
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const DEFAULT_MODEL = 'tencent/hy3:free';
+const DEFAULT_MODEL = 'google/gemma-4-26b-a4b-it:free';
 
 const SYSTEM_PROMPT = `You are a music notation assistant for TonalScript. Users will describe music they want, and you generate notation in TonalScript format.
 

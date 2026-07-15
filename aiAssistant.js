@@ -5,7 +5,7 @@
  */
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const DEFAULT_MODEL = 'deepseek/deepseek-chat:free';
+const DEFAULT_MODEL = 'tencent/hy3:free';
 
 const SYSTEM_PROMPT = `You are a music notation assistant for TonalScript. Users will describe music they want, and you generate notation in TonalScript format.
 
@@ -113,11 +113,9 @@ export class AIAssistant {
 
   getAvailableModels() {
     return [
-      { id: 'deepseek/deepseek-chat:free', name: 'DeepSeek Chat (Free)', free: true },
-      { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B (Free)', free: true },
-      { id: 'google/gemma-2-9b-it:free', name: 'Gemma 2 9B (Free)', free: true },
-      { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B (Free)', free: true },
-      { id: 'openai/gpt-3.5-turbo', name: 'GPT-3.5 Turbo', free: false }
+      { id: 'tencent/hy3:free', name: 'Tencent HY3 (Free)', free: true },
+      { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat (Paid)', free: false },
+      { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B (Paid)', free: false }
     ];
   }
 

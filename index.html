@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TonalScript</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <h1>TonalScript</h1>
+      <p class="tagline">Write Text, Hear Music – Instantly.</p>
+    </header>
+
+    <main>
+      <div class="input-section">
+        <textarea 
+          id="notationInput" 
+          placeholder="DA:4, MI:2, NA:1"
+          aria-label="Music notation input"
+        ></textarea>
+        <div id="inputError" class="error-message"></div>
+      </div>
+
+      <div class="control-bar">
+        <div class="preset-section">
+          <label for="presetSelect">Preset:</label>
+          <select id="presetSelect">
+            <option value="gamelan">Gamelan</option>
+            <option value="koto">Koto</option>
+            <option value="shamisen">Shamisen</option>
+          </select>
+        </div>
+
+        <div class="bpm-section">
+          <label for="bpmSlider">BPM: <span id="bpmValue">120</span></label>
+          <input 
+            type="range" 
+            id="bpmSlider" 
+            min="40" 
+            max="240" 
+            value="120"
+          >
+        </div>
+
+        <div class="playback-controls">
+          <button id="playBtn" disabled aria-label="Play">▶</button>
+          <button id="pauseBtn" disabled aria-label="Pause">⏸</button>
+          <button id="stopBtn" disabled aria-label="Stop">⏹</button>
+        </div>
+
+        <div class="export-section">
+          <button id="exportBtn" disabled aria-label="Export WAV">💾 Export</button>
+        </div>
+      </div>
+    </main>
+
+    <div id="exportModal" class="modal hidden">
+      <div class="modal-content">
+        <h2>Export Audio</h2>
+        <div class="duration-section">
+          <label for="durationSlider">Duration: <span id="durationValue">30</span>s</label>
+          <input type="range" id="durationSlider" min="10" max="60" value="30">
+        </div>
+        <div class="modal-actions">
+          <button id="cancelExport">Cancel</button>
+          <button id="confirmExport">Download</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
